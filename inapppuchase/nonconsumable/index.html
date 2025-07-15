@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Premium Purchase - App Store Connect</title>
+	<link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+	<div class="container">
+		<div class="header">
+			<h1>Premium Purchase</h1>
+			<p>Purchase premium features to unlock advanced functionality</p>
+		</div>
+
+		<div id="bridge-status" class="bridge-status">
+			<strong>AppPurchase Bridge:</strong> <span id="bridge-status-text">Connecting...</span>
+		</div>
+
+		<div id="purchase-history-status" class="purchase-history-status" style="display: none;">
+			<span id="purchase-history-text"></span>
+		</div>
+
+		<div class="product-list">
+			<h3>Available Products</h3>
+			<div id="products-container">
+				<div class="loading">Loading products...</div>
+			</div>
+		</div>
+
+		<div class="controls">
+			<h3>Print Features</h3>
+			<div class="print-buttons">
+				<button id="print-btn-onehour" class="btn print-btn print-btn-onehour" onclick="handlePrint('onehour')"
+					disabled>
+					Print Logs - One Hour (Purchase Required)
+				</button>
+				<button id="print-btn-oneday" class="btn print-btn print-btn-oneday" onclick="handlePrint('oneday')"
+					disabled>
+					Print Logs - One Day (Purchase Required)
+				</button>
+				<button id="print-btn-premium" class="btn print-btn print-btn-premium" onclick="handlePrint('premium')"
+					disabled>
+					Print Logs - Premium (Purchase Required)
+				</button>
+			</div>
+
+			<div style="margin-top: 20px;">
+				<button class="btn" onclick="restorePurchases()">
+					Restore Purchases
+				</button>
+				<button class="btn" onclick="checkPurchaseStatus()">
+					Check Purchase Status
+				</button>
+			</div>
+		</div>
+	</div>
+
+
+	<script src="script.js"></script>
+</body>
+
+</html>
