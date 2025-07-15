@@ -1,0 +1,279 @@
+.container {
+	max-width: 800px;
+	margin: 0 auto;
+	padding: 20px;
+	font-family: Arial, sans-serif;
+}
+
+.product-card {
+	border: 2px solid #ddd;
+	padding: 20px;
+	margin: 20px 0;
+	border-radius: 10px;
+	background-color: #f9f9f9;
+}
+
+.status-section {
+	background-color: #e8f4f8;
+	padding: 15px;
+	border-radius: 8px;
+	margin-bottom: 20px;
+}
+
+.button-group {
+	display: flex;
+	gap: 10px;
+	margin-top: 15px;
+	flex-wrap: wrap;
+}
+
+.btn {
+	padding: 12px 20px;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+	font-size: 16px;
+	font-weight: bold;
+}
+
+.btn-primary {
+	background-color: #007bff;
+	color: white;
+}
+
+.btn-secondary {
+	background-color: #6c757d;
+	color: white;
+}
+
+.btn-success {
+	background-color: #28a745;
+	color: white;
+}
+
+.btn-warning {
+	background-color: #ffc107;
+	color: #212529;
+}
+
+.btn-danger {
+	background-color: #dc3545;
+	color: white;
+}
+
+.btn-gem {
+	background-color: #6f42c1;
+	color: white;
+	padding: 10px 15px;
+	font-size: 14px;
+}
+
+.btn:hover:not(:disabled) {
+	opacity: 0.8;
+}
+
+.btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.premium-content {
+	display: none;
+	background-color: #d4edda;
+	padding: 15px;
+	border-radius: 8px;
+	border: 1px solid #c3e6cb;
+	margin-top: 20px;
+}
+
+.status-indicator {
+	display: inline-block;
+	padding: 5px 10px;
+	border-radius: 15px;
+	font-size: 12px;
+	font-weight: bold;
+	margin-left: 10px;
+}
+
+.status-premium {
+	background-color: #28a745;
+	color: white;
+}
+
+.status-free {
+	background-color: #dc3545;
+	color: white;
+}
+
+.debug-section {
+	background-color: #f8f9fa;
+	padding: 15px;
+	border-radius: 8px;
+	margin-top: 20px;
+	border: 1px solid #dee2e6;
+}
+
+.debug-section h3 {
+	margin-top: 0;
+	color: #495057;
+}
+
+.gem-usage-info {
+	background-color: #fff3cd;
+	padding: 15px;
+	border-radius: 8px;
+	border: 1px solid #ffeaa7;
+	margin-top: 20px;
+}
+
+.gem-usage-info h3 {
+	margin-top: 0;
+	color: #856404;
+}
+
+/* Updated gem packages - horizontal scroll with smaller cards */
+.gem-packages {
+	display: flex;
+	overflow-x: auto;
+	gap: 15px;
+	padding-bottom: 10px;
+	margin-top: 20px;
+	-webkit-overflow-scrolling: touch;
+}
+
+.gem-package {
+	flex: 0 0 200px;
+	/* fixed width for smaller cards */
+	border: 2px solid #6f42c1;
+	padding: 15px;
+	border-radius: 10px;
+	background: linear-gradient(135deg, #f8f9ff 0%, #e8f0ff 100%);
+	text-align: center;
+	position: relative;
+	transition: transform 0.3s ease, box-shadow 0.3s ease;
+	font-size: 14px;
+	height: auto;
+	box-sizing: border-box;
+}
+
+.gem-package:hover {
+	transform: translateY(-3px);
+	box-shadow: 0 8px 20px rgba(111, 66, 193, 0.15);
+}
+
+.gem-package.loading {
+	opacity: 0.6;
+}
+
+.gem-package h4 {
+	margin: 0 0 8px 0;
+	color: #6f42c1;
+	font-size: 16px;
+}
+
+.gem-package .gem-icon {
+	font-size: 20px;
+	margin-bottom: 8px;
+}
+
+.gem-package .price {
+	font-size: 16px;
+	font-weight: bold;
+	color: #28a745;
+	margin: 10px 0;
+}
+
+.gem-package .description {
+	color: #666;
+	font-size: 12px;
+	margin-bottom: 12px;
+	min-height: 40px;
+}
+
+.gem-package .best-value {
+	position: absolute;
+	top: -8px;
+	right: -8px;
+	background-color: #ff6b6b;
+	color: white;
+	padding: 4px 8px;
+	border-radius: 12px;
+	font-size: 11px;
+	font-weight: bold;
+}
+
+.loading-spinner {
+	display: inline-block;
+	width: 20px;
+	height: 20px;
+	border: 3px solid #f3f3f3;
+	border-top: 3px solid #6f42c1;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% {
+		transform: rotate(0deg);
+	}
+
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+/* Fixed message container at top for better visibility */
+#messages {
+	position: fixed;
+	top: 10px;
+	left: 50%;
+	transform: translateX(-50%);
+	max-width: 90%;
+	z-index: 1000;
+}
+
+.message {
+	padding: 10px 15px;
+	margin: 5px 0;
+	border-radius: 5px;
+	font-size: 14px;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.success {
+	background-color: #d4edda;
+	color: #155724;
+}
+
+.error {
+	background-color: #f8d7da;
+	color: #721c24;
+}
+
+.info {
+	background-color: #d1ecf1;
+	color: #0c5460;
+}
+
+/* Scroll indicator for gem packages */
+.gem-packages-container {
+	position: relative;
+}
+
+.scroll-hint {
+	text-align: center;
+	color: #666;
+	font-size: 12px;
+	margin-top: 5px;
+}
+
+@media (max-width: 600px) {
+	.gem-packages {
+		gap: 10px;
+	}
+
+	.gem-package {
+		flex: 0 0 180px;
+		padding: 12px;
+	}
+}

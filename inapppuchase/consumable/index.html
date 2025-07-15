@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>In-App Purchase Demo - Consumable Gems</title>
+	<link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+	<div class="container">
+		<h1>Premium Feature Store - Consumable Gems</h1>
+
+		<div class="status-section">
+			<h2>Gem Balance
+				<span id="gem-count-indicator" class="status-indicator status-free">0 Gems</span>
+			</h2>
+			<p id="status-text">Session gems: Use gems to access premium features</p>
+		</div>
+
+		<div class="gem-packages-container">
+			<h3>💎 Gem Packages</h3>
+			<div class="gem-packages" id="gem-packages">
+				<!-- Products will be dynamically loaded here -->
+			</div>
+			<div class="scroll-hint">← Scroll horizontally to see all packages →</div>
+		</div>
+
+		<div class="product-card">
+			<h2>Premium Features</h2>
+			<p>Use your gems to access premium features like detailed logging</p>
+
+			<div class="button-group">
+				<button id="log-btn" class="btn btn-secondary" onclick="printLog()" disabled>
+					Print Log (Need 1 gem)
+				</button>
+			</div>
+		</div>
+
+		<div class="gem-usage-info">
+			<h3>💎 How Gems Work</h3>
+			<p><strong>Cost per action:</strong> 1 gem = 1 log print</p>
+			<p><strong>Session only:</strong> Gems reset when you refresh the page</p>
+			<p><strong>Packages available:</strong> Fetched dynamically from App Store</p>
+		</div>
+
+		<div id="premium-content" class="premium-content">
+			<h3>🎉 Premium Log Feature Used!</h3>
+			<p>You've successfully used a gem to access the premium log feature. Check the console for detailed logs!
+			</p>
+		</div>
+
+		<div class="debug-section">
+			<h3>Debug Information</h3>
+			<p><strong>Available Products:</strong> <span id="debug-products-count">Loading...</span></p>
+			<p><strong>Current Session Gems:</strong> <span id="debug-gem-count">0</span></p>
+			<p><strong>Total Gems Used:</strong> <span id="debug-gems-used">0</span></p>
+			<p><strong>Total Gems Purchased:</strong> <span id="debug-gems-purchased">0</span></p>
+			<p><strong>Last Action:</strong> <span id="debug-last-action">None</span></p>
+			<p><strong>Available Purchase Tokens:</strong> <span id="debug-purchase-tokens">None</span></p>
+		</div>
+
+		<!-- Fixed message container at top -->
+		<div id="messages"></div>
+	</div>
+
+	<script type="text/javascript" src="script.js"></script>
+</body>
+
+</html>
