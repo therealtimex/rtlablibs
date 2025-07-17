@@ -225,7 +225,8 @@ function checkCachedSubscription() {
     // Still verify with server in the background
     setTimeout(() => {
       if (typeof AppPurchase !== 'undefined') {
-        getPurchaseStatus();
+        // Use getPurchaseHistory to verify subscription status
+        restorePurchases();
       }
     }, 1000);
     
@@ -253,20 +254,24 @@ function checkCachedSubscription() {
 
 /**
  * Check current purchase status
+ * This uses getPurchaseHistory from the AppPurchase interface
+ * since getPurchaseStatus is not in the official documentation
  */
 function getPurchaseStatus() {
-  if (typeof AppPurchase !== 'undefined' && AppPurchase.getPurchaseStatus) {
+  if (typeof AppPurchase !== 'undefined') {
     showMessage("Checking subscription status...", 'processing');
     
     try {
-      AppPurchase.getPurchaseStatus("statusCallback");
+      // According to the documentation, we should use getPurchaseHistory
+      // instead of getPurchaseStatus which isn't in the official API
+      AppPurchase.getPurchaseHistory("historyCallback");
     } catch (error) {
       console.error("Error checking purchase status:", error);
       showMessage("Failed to check subscription status.", 'error');
       getProducts(); // Fall back to showing products
     }
   } else {
-    console.warn("AppPurchase.getPurchaseStatus not available");
+    console.warn("AppPurchase interface not available");
     // If bridge is not available, try to load products directly
     getProducts();
   }
@@ -342,7 +347,9 @@ function getProducts() {
     showMessage("Loading subscription options...", 'processing');
     
     try {
-      AppPurchase.getProducts(JSON.stringify(productIds), "productsCallback");
+      // According to the documentation, we should pass the callback name as a string
+      // and the productIds as the first parameter
+      AppPurchase.getProducts(productIds, "productsCallback");
     } catch (error) {
       console.error("Error getting products:", error);
       showMessage("Failed to load subscription options.", 'error');
@@ -562,6 +569,7 @@ function historyCallback(result) {
     if (parsedResult.error) {
       console.error("History error:", parsedResult.error);
       showMessage("Failed to restore purchases: " + parsedResult.error, 'error');
+      getProducts(); // Fall back to showing products
     } else {
       console.log("Purchase history:", parsedResult);
       
@@ -569,6 +577,7 @@ function historyCallback(result) {
       if (parsedResult.subscriptions && parsedResult.subscriptions.length > 0) {
         // Find the most recent active subscription
         const activeSubscriptions = parsedResult.subscriptions.filter(sub => {
+          // According to the documentation, subscription objects have expiryTime property
           const expiryTime = new Date(sub.expiryTime).getTime();
           return expiryTime > Date.now();
         });
@@ -604,11 +613,17 @@ function historyCallback(result) {
       }
       
       // No active subscriptions found
-      showMessage("No active subscriptions found to restore.", 'info');
+      console.log("No active subscriptions found");
+      activeSubscription = null;
+      clearSubscriptionFromStorage();
+      hidePremiumFeature();
+      showMessage("Subscribe to unlock premium features.", 'info');
+      getProducts();
     }
   } catch (error) {
     console.error("Error in history callback:", error);
     showMessage("Failed to process restore result.", 'error');
+    getProducts(); // Fall back to showing products
   }
 }
 
