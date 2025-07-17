@@ -254,17 +254,21 @@ function checkCachedSubscription() {
 
 /**
  * Check current purchase status
- * This uses getPurchaseHistory from the AppPurchase interface
- * since getPurchaseStatus is not in the official documentation
+ * Uses the official getPurchaseStatus method from the AppPurchase interface
  */
 function getPurchaseStatus() {
   if (typeof AppPurchase !== 'undefined') {
     showMessage("Checking subscription status...", 'processing');
     
     try {
-      // According to the documentation, we should use getPurchaseHistory
-      // instead of getPurchaseStatus which isn't in the official API
-      AppPurchase.getPurchaseHistory("historyCallback");
+      // According to the updated documentation, we should use getPurchaseStatus
+      if (AppPurchase.getPurchaseStatus) {
+        AppPurchase.getPurchaseStatus("statusCallback");
+      } else {
+        // Fallback to getPurchaseHistory if getPurchaseStatus is not available
+        console.warn("getPurchaseStatus not available, falling back to getPurchaseHistory");
+        AppPurchase.getPurchaseHistory("historyCallback");
+      }
     } catch (error) {
       console.error("Error checking purchase status:", error);
       showMessage("Failed to check subscription status.", 'error');
@@ -343,12 +347,22 @@ function statusCallback(status) {
  * Fetch available subscription products
  */
 function getProducts() {
-  if (typeof AppPurchase !== 'undefined' && AppPurchase.getProducts) {
+  if (typeof AppPurchase !== 'undefined') {
     showMessage("Loading subscription options...", 'processing');
     
     try {
-      const productIdsString = JSON.stringify(productIds);
-      AppPurchase.getProducts(productIdsString, "productsCallback");
+      // According to the updated documentation, we should use getSubscriptions for subscriptions
+      if (AppPurchase.getSubscriptions) {
+        // Convert array to JSON string as per documentation
+        const productIdsString = JSON.stringify(productIds);
+        AppPurchase.getSubscriptions(productIdsString, "productsCallback");
+      } else if (AppPurchase.getProducts) {
+        // Fallback to getProducts if getSubscriptions is not available
+        const productIdsString = JSON.stringify(productIds);
+        AppPurchase.getProducts(productIdsString, "productsCallback");
+      } else {
+        throw new Error("No product retrieval methods available");
+      }
     } catch (error) {
       console.error("Error getting products:", error);
       showMessage("Failed to load subscription options.", 'error');
@@ -360,7 +374,7 @@ function getProducts() {
       }
     }
   } else {
-    console.warn("AppPurchase.getProducts not available");
+    console.warn("AppPurchase interface not available");
     showMessage("Subscription options could not be loaded on this device.", 'error');
     
     // For development/testing
