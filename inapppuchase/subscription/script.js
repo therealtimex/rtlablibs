@@ -579,56 +579,78 @@ function historyCallback(result) {
       console.error("History error:", parsedResult.error);
       showMessage("Failed to restore purchases: " + parsedResult.error, 'error');
       getProducts(); // Fall back to showing products
-    } else {
-      console.log("Purchase history:", parsedResult);
+      return;
+    }
+    
+    console.log("Purchase history:", parsedResult);
+    
+    // Handle different response formats
+    let subscriptions = [];
+    
+    // Check if result is an array directly (as in your case)
+    if (Array.isArray(parsedResult)) {
+      subscriptions = parsedResult;
+    } 
+    // Check if result has a subscriptions array (as in documentation)
+    else if (parsedResult.subscriptions && Array.isArray(parsedResult.subscriptions)) {
+      subscriptions = parsedResult.subscriptions;
+    }
+    
+    if (subscriptions.length > 0) {
+      // Find the most recent active subscription
+      const now = Date.now();
+      const activeSubscriptions = subscriptions.filter(sub => {
+        if (!sub.expiryTime) return false;
+        const expiryTime = new Date(sub.expiryTime).getTime();
+        return expiryTime > now;
+      });
       
-      // Check for active subscriptions
-      if (parsedResult.subscriptions && parsedResult.subscriptions.length > 0) {
-        // Find the most recent active subscription
-        const activeSubscriptions = parsedResult.subscriptions.filter(sub => {
-          // According to the documentation, subscription objects have expiryTime property
-          const expiryTime = new Date(sub.expiryTime).getTime();
-          return expiryTime > Date.now();
+      if (activeSubscriptions.length > 0) {
+        // Sort by expiry time (latest first)
+        activeSubscriptions.sort((a, b) => {
+          return new Date(b.expiryTime).getTime() - new Date(a.expiryTime).getTime();
         });
         
-        if (activeSubscriptions.length > 0) {
-          // Sort by expiry time (latest first)
-          activeSubscriptions.sort((a, b) => {
-            return new Date(b.expiryTime).getTime() - new Date(a.expiryTime).getTime();
-          });
-          
-          const latestSub = activeSubscriptions[0];
-          
-          // Store subscription details
-          activeSubscription = {
-            success: true,
-            subscriptionId: latestSub.subscriptionId,
-            purchaseToken: latestSub.purchaseToken,
-            purchaseTime: latestSub.purchaseTime,
-            expiryTime: latestSub.expiryTime,
-            autoRenewing: latestSub.autoRenewing
-          };
-          
-          // Save to local storage
-          saveSubscriptionToStorage(activeSubscription);
-          
-          showMessage("Your subscription has been restored successfully!", 'success');
-          showPremiumFeature();
-          
-          // Set up expiration check
-          scheduleExpirationCheck(latestSub.expiryTime);
-          return;
-        }
+        const latestSub = activeSubscriptions[0];
+        
+        // Store subscription details
+        activeSubscription = {
+          success: true,
+          subscriptionId: latestSub.subscriptionId,
+          purchaseToken: latestSub.purchaseToken,
+          purchaseTime: latestSub.purchaseTime,
+          expiryTime: latestSub.expiryTime,
+          autoRenewing: latestSub.autoRenewing
+        };
+        
+        // Save to local storage
+        saveSubscriptionToStorage(activeSubscription);
+        
+        showMessage("Your subscription has been restored successfully!", 'success');
+        showPremiumFeature();
+        
+        // Set up expiration check
+        scheduleExpirationCheck(latestSub.expiryTime);
+        return;
+      } else {
+        // Show the most recent expired subscription information
+        const mostRecentSub = subscriptions.sort((a, b) => {
+          return new Date(b.expiryTime).getTime() - new Date(a.expiryTime).getTime();
+        })[0];
+        
+        const expiryDate = new Date(mostRecentSub.expiryTime);
+        console.log("Most recent subscription expired on:", expiryDate);
+        showMessage(`Your subscription expired on ${formatDate(mostRecentSub.expiryTime)}. Please subscribe again.`, 'info');
       }
-      
-      // No active subscriptions found
-      console.log("No active subscriptions found");
-      activeSubscription = null;
-      clearSubscriptionFromStorage();
-      hidePremiumFeature();
-      showMessage("Subscribe to unlock premium features.", 'info');
-      getProducts();
     }
+    
+    // No active subscriptions found
+    console.log("No active subscriptions found");
+    activeSubscription = null;
+    clearSubscriptionFromStorage();
+    hidePremiumFeature();
+    showMessage("Subscribe to unlock premium features.", 'info');
+    getProducts();
   } catch (error) {
     console.error("Error in history callback:", error);
     showMessage("Failed to process restore result.", 'error');
