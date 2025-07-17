@@ -347,9 +347,8 @@ function getProducts() {
     showMessage("Loading subscription options...", 'processing');
     
     try {
-      // According to the documentation, we should pass the callback name as a string
-      // and the productIds as the first parameter
-      AppPurchase.getProducts(productIds, "productsCallback");
+      const productIdsString = JSON.stringify(productIds);
+      AppPurchase.getProducts(productIdsString, "productsCallback");
     } catch (error) {
       console.error("Error getting products:", error);
       showMessage("Failed to load subscription options.", 'error');
