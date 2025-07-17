@@ -18,7 +18,6 @@ const productIds = [
 // Store subscription data
 let activeSubscription = null;
 let availableProducts = [];
-let isInitialized = false;
 
 /**
  * Local storage keys
@@ -59,80 +58,6 @@ function hidePremiumFeature() {
 }
 
 /**
- * Initialize the AppPurchase bridge
- * This should be called first to ensure the bridge is ready
- */
-function initializeAppPurchase() {
-  if (typeof AppPurchase !== 'undefined' && AppPurchase.initialize) {
-    showMessage("Initializing purchase system...", 'processing');
-    
-    try {
-      // Initialize with callback
-      AppPurchase.initialize("initializationCallback");
-    } catch (error) {
-      console.error("Error initializing AppPurchase:", error);
-      showMessage("Failed to initialize purchase system. Please try again later.", 'error');
-    }
-  } else {
-    console.error("AppPurchase bridge not available");
-    showMessage("Purchase system not available on this device.", 'error');
-    
-    // For development/testing - simulate products
-    simulateProductsForTesting();
-  }
-}
-
-/**
- * Callback for initialization result
- * @param {Object} result - Result of initialization
- */
-function initializationCallback(result) {
-  try {
-    const parsedResult = typeof result === 'string' ? JSON.parse(result) : result;
-    
-    if (parsedResult.success) {
-      console.log("AppPurchase initialized successfully");
-      isInitialized = true;
-      
-      // Check subscription status after initialization
-      checkSubscriptionStatus();
-    } else {
-      console.error("AppPurchase initialization failed:", parsedResult.error);
-      showMessage("Purchase system initialization failed: " + parsedResult.error, 'error');
-    }
-  } catch (error) {
-    console.error("Error in initialization callback:", error);
-    showMessage("An error occurred during initialization.", 'error');
-  }
-}
-
-/**
- * Check if user has active subscriptions
- */
-function checkSubscriptionStatus() {
-  if (!isInitialized && typeof AppPurchase !== 'undefined') {
-    initializeAppPurchase();
-    return;
-  }
-  
-  if (typeof AppPurchase !== 'undefined' && AppPurchase.getSubscriptionStatus) {
-    showMessage("Checking subscription status...", 'processing');
-    
-    try {
-      AppPurchase.getSubscriptionStatus("subscriptionStatusCallback");
-    } catch (error) {
-      console.error("Error checking subscription status:", error);
-      showMessage("Failed to check subscription status.", 'error');
-      getProducts(); // Fall back to showing products
-    }
-  } else {
-    console.warn("AppPurchase.getSubscriptionStatus not available");
-    // If bridge is not available, try to load products directly
-    getProducts();
-  }
-}
-
-/**
  * Save subscription data to local storage
  * @param {Object} subscription - Subscription data to save
  */
@@ -168,8 +93,8 @@ function loadSubscriptionFromStorage() {
     }
     
     // Check if subscription has expired
-    if (subscription.expiryDate) {
-      const expiryTime = new Date(subscription.expiryDate).getTime();
+    if (subscription.expiryTime) {
+      const expiryTime = new Date(subscription.expiryTime).getTime();
       if (expiryTime <= now) {
         console.log("Cached subscription has expired");
         clearSubscriptionFromStorage();
@@ -233,43 +158,6 @@ function loadProductsFromStorage() {
 }
 
 /**
- * Callback for subscription status check
- * @param {Object|string} status - Subscription status information
- */
-function subscriptionStatusCallback(status) {
-  try {
-    const parsedStatus = typeof status === 'string' ? JSON.parse(status) : status;
-    
-    if (parsedStatus && parsedStatus.isSubscribed) {
-      console.log("User has active subscription:", parsedStatus);
-      activeSubscription = parsedStatus;
-      
-      // Save subscription to local storage
-      saveSubscriptionToStorage(parsedStatus);
-      
-      showMessage(`Welcome back! Your subscription is active until ${formatDate(parsedStatus.expiryDate)}.`, 'success');
-      showPremiumFeature();
-      
-      // Set up expiration check if needed
-      if (parsedStatus.expiryDate) {
-        scheduleExpirationCheck(parsedStatus.expiryDate);
-      }
-    } else {
-      console.log("User is not subscribed");
-      activeSubscription = null;
-      clearSubscriptionFromStorage();
-      hidePremiumFeature();
-      showMessage("Subscribe to unlock premium features.", 'info');
-      getProducts();
-    }
-  } catch (error) {
-    console.error("Error in subscription status callback:", error);
-    showMessage("Failed to verify subscription status.", 'error');
-    getProducts(); // Fall back to showing products
-  }
-}
-
-/**
  * Format date for display
  * @param {string|number} dateString - Date string or timestamp
  * @returns {string} Formatted date
@@ -291,15 +179,15 @@ function formatDate(dateString) {
 
 /**
  * Schedule a check for subscription expiration
- * @param {string|number} expiryDate - Expiration date or timestamp
+ * @param {string|number} expiryTime - Expiration date or timestamp
  */
-function scheduleExpirationCheck(expiryDate) {
+function scheduleExpirationCheck(expiryTime) {
   try {
-    const expiryTime = new Date(expiryDate).getTime();
+    const expiryDate = new Date(expiryTime).getTime();
     const now = Date.now();
     
-    if (expiryTime > now) {
-      const timeUntilExpiry = expiryTime - now;
+    if (expiryDate > now) {
+      const timeUntilExpiry = expiryDate - now;
       console.log(`Scheduling expiration check in ${Math.floor(timeUntilExpiry/1000/60)} minutes`);
       
       // Set timeout to check again after expiry
@@ -313,14 +201,143 @@ function scheduleExpirationCheck(expiryDate) {
 }
 
 /**
+ * Check for cached subscription on startup
+ * This runs before making any network calls
+ */
+function checkCachedSubscription() {
+  // First try to load from local storage
+  const cachedSubscription = loadSubscriptionFromStorage();
+  
+  if (cachedSubscription && cachedSubscription.success) {
+    // We have a valid cached subscription
+    console.log("Found valid cached subscription:", cachedSubscription);
+    activeSubscription = cachedSubscription;
+    
+    // Show premium content
+    showPremiumFeature();
+    showMessage(`Welcome back! Your subscription is active until ${formatDate(cachedSubscription.expiryTime)}.`, 'success');
+    
+    // Schedule expiration check
+    if (cachedSubscription.expiryTime) {
+      scheduleExpirationCheck(cachedSubscription.expiryTime);
+    }
+    
+    // Still verify with server in the background
+    setTimeout(() => {
+      if (typeof AppPurchase !== 'undefined') {
+        getPurchaseStatus();
+      }
+    }, 1000);
+    
+    return true;
+  }
+  
+  // No valid cached subscription
+  console.log("No valid cached subscription found");
+  hidePremiumFeature();
+  
+  // Try to load cached products while we wait for server response
+  const cachedProducts = loadProductsFromStorage();
+  if (cachedProducts && cachedProducts.length > 0) {
+    console.log("Using cached products while loading from server");
+    displayProducts(cachedProducts);
+    showMessage("Choose a subscription plan below:", 'info');
+  } else {
+    // Make sure products container is visible
+    productsContainer.style.display = 'block';
+    showMessage("Loading subscription options...", 'processing');
+  }
+  
+  return false;
+}
+
+/**
+ * Check current purchase status
+ */
+function getPurchaseStatus() {
+  if (typeof AppPurchase !== 'undefined' && AppPurchase.getPurchaseStatus) {
+    showMessage("Checking subscription status...", 'processing');
+    
+    try {
+      AppPurchase.getPurchaseStatus("statusCallback");
+    } catch (error) {
+      console.error("Error checking purchase status:", error);
+      showMessage("Failed to check subscription status.", 'error');
+      getProducts(); // Fall back to showing products
+    }
+  } else {
+    console.warn("AppPurchase.getPurchaseStatus not available");
+    // If bridge is not available, try to load products directly
+    getProducts();
+  }
+}
+
+/**
+ * Callback for purchase status check
+ * @param {Object|string} status - Purchase status information
+ */
+function statusCallback(status) {
+  try {
+    const parsedStatus = typeof status === 'string' ? JSON.parse(status) : status;
+    
+    if (parsedStatus.error) {
+      console.error("Status error:", parsedStatus.error);
+      showMessage("Failed to verify subscription status.", 'error');
+      getProducts(); // Fall back to showing products
+      return;
+    }
+    
+    console.log("Purchase status:", parsedStatus);
+    
+    // Check if user has any active subscriptions
+    if (parsedStatus.activeSubscriptions && 
+        parsedStatus.activeSubscriptions.length > 0 &&
+        parsedStatus.subscriptionStatus) {
+      
+      // Get the first active subscription
+      const subId = parsedStatus.activeSubscriptions[0];
+      const subStatus = parsedStatus.subscriptionStatus[subId];
+      
+      if (subStatus && subStatus.active) {
+        // User has an active subscription
+        activeSubscription = {
+          success: true,
+          subscriptionId: subId,
+          expiryTime: subStatus.expiryTime,
+          autoRenewing: subStatus.autoRenewing
+        };
+        
+        // Save subscription to local storage
+        saveSubscriptionToStorage(activeSubscription);
+        
+        showMessage(`Welcome back! Your subscription is active until ${formatDate(subStatus.expiryTime)}.`, 'success');
+        showPremiumFeature();
+        
+        // Schedule expiration check
+        scheduleExpirationCheck(subStatus.expiryTime);
+        return;
+      }
+    }
+    
+    // No active subscription found
+    console.log("User is not subscribed");
+    activeSubscription = null;
+    clearSubscriptionFromStorage();
+    hidePremiumFeature();
+    showMessage("Subscribe to unlock premium features.", 'info');
+    getProducts();
+    
+  } catch (error) {
+    console.error("Error in status callback:", error);
+    showMessage("Failed to verify subscription status.", 'error');
+    getProducts(); // Fall back to showing products
+  }
+}
+
+/**
  * Fetch available subscription products
  */
 function getProducts() {
-  if (!isInitialized && typeof AppPurchase !== 'undefined') {
-    initializeAppPurchase();
-    return;
-  }
-  
   if (typeof AppPurchase !== 'undefined' && AppPurchase.getProducts) {
     showMessage("Loading subscription options...", 'processing');
     
@@ -329,6 +346,12 @@ function getProducts() {
     } catch (error) {
       console.error("Error getting products:", error);
       showMessage("Failed to load subscription options.", 'error');
+      
+      // Try to use cached products
+      const cachedProducts = loadProductsFromStorage();
+      if (cachedProducts && cachedProducts.length > 0) {
+        displayProducts(cachedProducts);
+      }
     }
   } else {
     console.warn("AppPurchase.getProducts not available");
@@ -350,9 +373,19 @@ function productsCallback(result) {
     if (parsedResult.error) {
       console.error("Products error:", parsedResult.error);
       showMessage("Could not load subscription options: " + parsedResult.error, 'error');
+      
+      // Try to use cached products if available
+      const cachedProducts = loadProductsFromStorage();
+      if (cachedProducts && cachedProducts.length > 0) {
+        console.log("Using cached products due to error");
+        displayProducts(cachedProducts);
+      }
     } else if (parsedResult.products && Array.isArray(parsedResult.products)) {
       console.log("Available products:", parsedResult.products);
       availableProducts = parsedResult.products;
+      
+      // Save products to local storage for future use
+      saveProductsToStorage(parsedResult.products);
       
       if (parsedResult.products.length === 0) {
         showMessage("No subscription options are currently available.", 'info');
@@ -363,10 +396,24 @@ function productsCallback(result) {
     } else {
       console.error("Invalid products response:", parsedResult);
       showMessage("Received invalid subscription data.", 'error');
+      
+      // Try to use cached products if available
+      const cachedProducts = loadProductsFromStorage();
+      if (cachedProducts && cachedProducts.length > 0) {
+        console.log("Using cached products due to invalid response");
+        displayProducts(cachedProducts);
+      }
     }
   } catch (error) {
     console.error("Error in products callback:", error);
     showMessage("Failed to process subscription options.", 'error');
+    
+    // Try to use cached products if available
+    const cachedProducts = loadProductsFromStorage();
+    if (cachedProducts && cachedProducts.length > 0) {
+      console.log("Using cached products due to error");
+      displayProducts(cachedProducts);
+    }
   }
 }
 
@@ -385,14 +432,22 @@ function displayProducts(products) {
     return;
   }
   
+  // Filter for subscription products only
+  const subscriptionProducts = products.filter(product => 
+    product.type === 'subs' || product.subscriptionPeriod
+  );
+  
+  // If no subscription products found, show all products
+  const productsToDisplay = subscriptionProducts.length > 0 ? subscriptionProducts : products;
+  
   // Sort products by price (lowest first)
-  products.sort((a, b) => {
+  productsToDisplay.sort((a, b) => {
     const priceA = parseFloat(a.price.replace(/[^0-9.]/g, ''));
     const priceB = parseFloat(b.price.replace(/[^0-9.]/g, ''));
     return priceA - priceB;
   });
   
-  products.forEach(product => {
+  productsToDisplay.forEach(product => {
     const productDiv = document.createElement('div');
     productDiv.className = 'product-item';
     
@@ -413,19 +468,6 @@ function displayProducts(products) {
  * @param {string} subscriptionId - ID of the subscription to purchase
  */
 function buySubscription(subscriptionId) {
-  if (!isInitialized && typeof AppPurchase !== 'undefined') {
-    showMessage("Initializing purchase system...", 'processing');
-    initializeAppPurchase();
-    
-    // Store the subscription ID to purchase after initialization
-    setTimeout(() => {
-      if (isInitialized) {
-        buySubscription(subscriptionId);
-      }
-    }, 1000);
-    return;
-  }
-  
   if (typeof AppPurchase !== 'undefined' && AppPurchase.purchaseSubscription) {
     showMessage("Processing your subscription...", 'processing');
     
@@ -456,11 +498,11 @@ function subscriptionCallback(result) {
       console.error("Subscription error:", parsedResult.error);
       
       // Handle specific error cases
-      if (parsedResult.errorCode === 'E_USER_CANCELLED') {
+      if (parsedResult.error.includes('cancelled')) {
         showMessage("Purchase cancelled.", 'info');
-      } else if (parsedResult.errorCode === 'E_ALREADY_OWNED') {
+      } else if (parsedResult.error.includes('already owned')) {
         showMessage("You already own this subscription. Refreshing status...", 'info');
-        checkSubscriptionStatus();
+        getPurchaseStatus();
       } else {
         showMessage("Subscription failed: " + parsedResult.error, 'error');
       }
@@ -468,25 +510,17 @@ function subscriptionCallback(result) {
       console.log("Subscription successful:", parsedResult);
       
       // Store subscription details
-      activeSubscription = {
-        isSubscribed: true,
-        productId: parsedResult.subscriptionId,
-        purchaseDate: parsedResult.purchaseDate || new Date().toISOString(),
-        expiryDate: parsedResult.expiryDate,
-        transactionId: parsedResult.transactionId
-      };
+      activeSubscription = parsedResult;
+      
+      // Save to local storage
+      saveSubscriptionToStorage(parsedResult);
       
       showMessage("Subscription successful! Thank you for subscribing.", 'success');
       showPremiumFeature();
       
       // Set up expiration check if needed
-      if (parsedResult.expiryDate) {
-        scheduleExpirationCheck(parsedResult.expiryDate);
-      }
-      
-      // Verify receipt if needed
-      if (parsedResult.receipt && typeof AppPurchase !== 'undefined' && AppPurchase.verifyReceipt) {
-        verifyReceipt(parsedResult.receipt);
+      if (parsedResult.expiryTime) {
+        scheduleExpirationCheck(parsedResult.expiryTime);
       }
     } else {
       console.error("Invalid subscription response:", parsedResult);
@@ -499,85 +533,81 @@ function subscriptionCallback(result) {
 }
 
 /**
- * Verify subscription receipt with server
- * @param {string} receipt - Purchase receipt
- */
-function verifyReceipt(receipt) {
-  if (typeof AppPurchase !== 'undefined' && AppPurchase.verifyReceipt) {
-    try {
-      AppPurchase.verifyReceipt(receipt, "verificationCallback");
-    } catch (error) {
-      console.error("Error verifying receipt:", error);
-    }
-  }
-}
-
-/**
- * Callback for receipt verification
- * @param {Object|string} result - Verification result
- */
-function verificationCallback(result) {
-  try {
-    const parsedResult = typeof result === 'string' ? JSON.parse(result) : result;
-    
-    if (parsedResult.valid) {
-      console.log("Receipt verification successful:", parsedResult);
-    } else {
-      console.error("Receipt verification failed:", parsedResult);
-      // Don't show error to user, handle internally
-    }
-  } catch (error) {
-    console.error("Error in verification callback:", error);
-  }
-}
-
-/**
  * Restore previous purchases
  */
 function restorePurchases() {
-  if (!isInitialized && typeof AppPurchase !== 'undefined') {
-    initializeAppPurchase();
-    return;
-  }
-  
-  if (typeof AppPurchase !== 'undefined' && AppPurchase.restorePurchases) {
+  if (typeof AppPurchase !== 'undefined' && AppPurchase.getPurchaseHistory) {
     showMessage("Restoring your purchases...", 'processing');
     
     try {
-      AppPurchase.restorePurchases("restoreCallback");
+      AppPurchase.getPurchaseHistory("historyCallback");
     } catch (error) {
       console.error("Error restoring purchases:", error);
       showMessage("Failed to restore purchases.", 'error');
     }
   } else {
-    console.error("AppPurchase.restorePurchases not available");
+    console.error("AppPurchase.getPurchaseHistory not available");
     showMessage("Restore purchases is not available on this device.", 'error');
   }
 }
 
 /**
- * Callback for restore purchases
- * @param {Object|string} result - Restore result
+ * Callback for purchase history
+ * @param {Object|string} result - Purchase history result
  */
-function restoreCallback(result) {
+function historyCallback(result) {
   try {
     const parsedResult = typeof result === 'string' ? JSON.parse(result) : result;
     
     if (parsedResult.error) {
-      console.error("Restore error:", parsedResult.error);
+      console.error("History error:", parsedResult.error);
       showMessage("Failed to restore purchases: " + parsedResult.error, 'error');
-    } else if (parsedResult.restored && parsedResult.restored.length > 0) {
-      console.log("Restored purchases:", parsedResult.restored);
-      showMessage("Your purchases have been restored successfully!", 'success');
-      
-      // Check subscription status again
-      checkSubscriptionStatus();
     } else {
-      console.log("No purchases to restore");
-      showMessage("No previous purchases found to restore.", 'info');
+      console.log("Purchase history:", parsedResult);
+      
+      // Check for active subscriptions
+      if (parsedResult.subscriptions && parsedResult.subscriptions.length > 0) {
+        // Find the most recent active subscription
+        const activeSubscriptions = parsedResult.subscriptions.filter(sub => {
+          const expiryTime = new Date(sub.expiryTime).getTime();
+          return expiryTime > Date.now();
+        });
+        
+        if (activeSubscriptions.length > 0) {
+          // Sort by expiry time (latest first)
+          activeSubscriptions.sort((a, b) => {
+            return new Date(b.expiryTime).getTime() - new Date(a.expiryTime).getTime();
+          });
+          
+          const latestSub = activeSubscriptions[0];
+          
+          // Store subscription details
+          activeSubscription = {
+            success: true,
+            subscriptionId: latestSub.subscriptionId,
+            purchaseToken: latestSub.purchaseToken,
+            purchaseTime: latestSub.purchaseTime,
+            expiryTime: latestSub.expiryTime,
+            autoRenewing: latestSub.autoRenewing
+          };
+          
+          // Save to local storage
+          saveSubscriptionToStorage(activeSubscription);
+          
+          showMessage("Your subscription has been restored successfully!", 'success');
+          showPremiumFeature();
+          
+          // Set up expiration check
+          scheduleExpirationCheck(latestSub.expiryTime);
+          return;
+        }
+      }
+      
+      // No active subscriptions found
+      showMessage("No active subscriptions found to restore.", 'info');
     }
   } catch (error) {
-    console.error("Error in restore callback:", error);
+    console.error("Error in history callback:", error);
     showMessage("Failed to process restore result.", 'error');
   }
 }
@@ -588,7 +618,7 @@ function restoreCallback(result) {
  */
 function handleAppForeground() {
   console.log("App came to foreground, checking subscription status");
-  checkSubscriptionStatus();
+  getPurchaseStatus();
 }
 
 /**
@@ -600,6 +630,7 @@ function simulateProductsForTesting() {
   const testProducts = [
     {
       productId: "com.realtimex.af.appjtzfi.1week",
+      type: "subs",
       title: "Weekly Premium",
       description: "Access premium features for one week",
       price: "$1.99",
@@ -607,6 +638,7 @@ function simulateProductsForTesting() {
     },
     {
       productId: "com.realtimex.af.appjtzfi.1month",
+      type: "subs",
       title: "Monthly Premium",
       description: "Access premium features for one month at a discounted rate",
       price: "$4.99",
@@ -644,10 +676,13 @@ function simulatePurchaseForTesting(subscriptionId) {
     
     const mockResult = {
       success: true,
+      purchaseToken: 'test-token-' + Math.floor(Math.random() * 1000000),
       subscriptionId: subscriptionId,
-      purchaseDate: now.toISOString(),
-      expiryDate: expiryDate.toISOString(),
-      transactionId: 'test-transaction-' + Math.floor(Math.random() * 1000000)
+      orderId: 'test-order-' + Math.floor(Math.random() * 1000000),
+      purchaseTime: now.getTime(),
+      expiryTime: expiryDate.getTime(),
+      autoRenewing: true,
+      purchaseState: 1
     };
     
     subscriptionCallback(mockResult);
@@ -676,11 +711,16 @@ function addRestoreButton() {
 
 // Set up event listeners
 window.addEventListener('load', () => {
-  // Initialize the purchase system
-  initializeAppPurchase();
-  
   // Add restore button
   addRestoreButton();
+  
+  // First check for cached subscription
+  const hasValidSubscription = checkCachedSubscription();
+  
+  // If no valid subscription found, check purchase status
+  if (!hasValidSubscription) {
+    getPurchaseStatus();
+  }
   
   // Set up visibility change listener to detect app coming to foreground
   document.addEventListener('visibilitychange', () => {
