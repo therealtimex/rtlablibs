@@ -356,10 +356,6 @@ function getProducts() {
         // Convert array to JSON string as per documentation
         const productIdsString = JSON.stringify(productIds);
         AppPurchase.getSubscriptions(productIdsString, "productsCallback");
-      } else if (AppPurchase.getProducts) {
-        // Fallback to getProducts if getSubscriptions is not available
-        const productIdsString = JSON.stringify(productIds);
-        AppPurchase.getProducts(productIdsString, "productsCallback");
       } else {
         throw new Error("No product retrieval methods available");
       }
