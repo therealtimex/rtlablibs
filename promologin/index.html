@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Promo Login</title>
+	<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+	<div class="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
+		<h1 class="text-3xl font-bold text-gray-800 mb-6">Welcome</h1>
+		<div class="grid grid-cols-1 gap-4">
+			<button
+				class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300"
+				onclick="standardSignIn()">Standard Sign-in with r=1,f=1</button>
+			<button
+				class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-4 rounded-lg transition duration-300"
+				onclick="projectSignIn()">Sign-in with C752</button>
+			<button
+				class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300"
+				onclick="signInWithoutParams()">Sign-in (No Params)</button>
+			<button
+				class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300"
+				onclick="registerWithoutParams()">Register (No Params)</button>
+			<button class="text-gray-500 hover:text-gray-700 font-medium py-2 px-4" onclick="guest()">Continue as
+				Guest</button>
+		</div>
+	</div>
+
+	<script>
+		// Mock App object for browser testing
+		if (typeof App === 'undefined') {
+			console.warn("Native 'App' interface not found. Using mock object.");
+			window.App = {
+				signin: function (jsonString) {
+					const message = "App.signin called with: " + (jsonString || '(no params)');
+					console.log(message);
+					alert(message);
+				},
+				register: function (jsonString) {
+					const message = "App.register called with: " + (jsonString || '(no params)');
+					console.log(message);
+					alert(message);
+				},
+				guest: function () {
+					console.log("App.guest called");
+					alert("App.guest called");
+				}
+			};
+		}
+
+		function standardSignIn() {
+			const params = {
+				r: "1",
+				f: "1"
+			};
+			console.log('Calling App.signin with:', params);
+			App.signin(JSON.stringify(params));
+		}
+
+		function projectSignIn() {
+			const params = {
+				project_code: "C752"
+			};
+			console.log('Calling App.signin with project code:', params);
+			App.signin(JSON.stringify(params));
+		}
+
+		function signInWithoutParams() {
+			console.log('Calling App.signin without params');
+			App.signin();
+		}
+
+
+		function registerWithoutParams() {
+			console.log('Calling App.register without params');
+			App.register();
+		}
+
+		function guest() {
+			console.log('Calling App.guest');
+			App.guest();
+		}
+	</script>
+</body>
+
+</html>
